@@ -18,6 +18,7 @@ if "hints" not in st.session_state:
     st.session_state.correct = False  # 정답 여부
     st.session_state.movie_title = "인셉션"  # 정답 영화 제목
     st.session_state.user_input = ""  # 사용자의 입력 값
+    st.session_state.game_over = False  # 게임 종료 여부
 
 # 함수: 정답 확인
 def check_answer(user_answer):
@@ -38,13 +39,19 @@ def reset_game():
     st.session_state.current_hint_index = 0
     st.session_state.correct = False
     st.session_state.user_input = ""
-    st.experimental_rerun()  # 새로고침하여 상태 초기화
+    st.session_state.game_over = False
 
 # 앱 제목
 st.title("🎬 영화 제목 맞추기 게임!")
 
+# 게임 종료 여부 확인
+if st.session_state.game_over:
+    st.error(f"모든 힌트가 끝났습니다. 정답은 **'{st.session_state.movie_title}'**입니다.")
+    if st.button("새 게임 시작"):
+        reset_game()
+
 # 현재 힌트 출력
-if not st.session_state.correct:
+elif not st.session_state.correct:
     st.write(f"**힌트 #{st.session_state.current_hint_index + 1}:** {st.session_state.hints[st.session_state.current_hint_index]}")
 
     # 사용자 입력창
@@ -61,13 +68,8 @@ if not st.session_state.correct:
             st.error("안타깝네요. 매우 근접하셨는데 아직 정답이 아닙니다.")
             if st.session_state.current_hint_index + 1 < len(st.session_state.hints):
                 st.session_state.current_hint_index += 1  # 다음 힌트로 넘어감
-                st.write("다음 힌트를 들어보세요!")
-                st.experimental_rerun()
             else:
-                st.error(f"모든 힌트가 끝났습니다. 정답은 **'{st.session_state.movie_title}'**입니다.")
-                st.write("게임을 다시 시작하려면 아래 버튼을 눌러주세요.")
-                if st.button("새 게임 시작"):
-                    reset_game()
+                st.session_state.game_over = True  # 모든 힌트 소진
 else:
     # 정답을 맞췄을 경우
     if st.button("새 게임 시작"):
