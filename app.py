@@ -53,4 +53,11 @@ if st.session_state.correct or st.session_state.current_hint_index >= len(st.ses
         st.session_state.hints = [
             "이 영화는 크리스토퍼 놀란 감독의 작품으로, 꿈과 현실을 넘나드는 스릴러입니다.",
             "주인공은 꿈속에서 아이디어를 훔치는 전문 도둑으로 활동합니다.",
-            
+            "레오나르도 디카프리오가 주연을 맡았으며, 2010년에 개봉되었습니다.",
+            "이 영화는 '토템'이라는 물건을 통해 꿈과 현실을 구분합니다.",
+            "영화의 마지막 장면은 팽이가 도는 것으로 끝나며, 관객들 사이에 논쟁을 불러일으켰습니다."
+        ]
+        st.session_state.current_hint_index = 0
+        st.session_state.correct = False
+        st.session_state.user_input = ""
+        st.experimental_rerun()
