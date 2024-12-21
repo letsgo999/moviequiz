@@ -1,155 +1,53 @@
-import streamlit as st
-import openai
-import random
-import time
 import os
-from pathlib import Path
-from googletrans import Translator
+import openai
+import streamlit as st
 
-# 번역기 초기화
-translator = Translator()
+# 환경변수에서 OpenAI API 키 가져오기
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# OpenAI API 키 설정 함수
-def setup_openai_api_key():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        try:
-            api_key = st.secrets["OPENAI_API_KEY"]
-        except:
-            api_key = None
-    if not api_key:
-        api_key = st.sidebar.text_input("OpenAI API 키를 입력하세요:", type="password")
-        if not api_key:
-            st.error("OpenAI API 키가 필요합니다. API 키를 입력해주세요.")
-            st.stop()
-    return api_key
-
-def translate_to_korean(text):
-    try:
-        result = translator.translate(text, dest='ko')
-        return result.text
-    except Exception as e:
-        st.error(f"번역 중 오류가 발생했습니다: {str(e)}")
-        return text
-
-def get_ai_response(prompt):
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": f"""You are a movie expert. 
-                Provide a hint for the movie: {st.session_state.current_movie}
-                Make it specific but don't reveal the answer directly."""},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        hint = response.choices[0].message.content
-        # 힌트를 한글로 번역
-        korean_hint = translate_to_korean(hint)
-        return korean_hint
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-def initialize_session_state():
-    if 'current_movie' not in st.session_state:
-        st.session_state.current_movie = None
-    if 'hints' not in st.session_state:
-        st.session_state.hints = []
-    if 'hint_count' not in st.session_state:
-        st.session_state.hint_count = 0
-    if 'give_up_count' not in st.session_state:
-        st.session_state.give_up_count = 0
-
-def generate_new_movie():
-    sample_movies = [
-        {"en": "The Matrix", "ko": "매트릭스"},
-        {"en": "Inception", "ko": "인셉션"},
-        {"en": "Parasite", "ko": "기생충"},
-        {"en": "Oldboy", "ko": "올드보이"},
-        {"en": "The Lord of the Rings", "ko": "반지의 제왕"},
-        {"en": "Frozen", "ko": "겨울왕국"},
-        {"en": "Avengers", "ko": "어벤져스"},
-        {"en": "Titanic", "ko": "타이타닉"},
-        {"en": "Contact", "ko": "컨택트"}
+# 힌트 데이터 및 상태 초기화
+if "hints" not in st.session_state:
+    st.session_state.hints = [
+        "이 영화는 크리스토퍼 놀란 감독의 작품으로, 꿈과 현실을 넘나드는 스릴러입니다.",
+        "주인공은 꿈속에서 아이디어를 훔치는 전문 도둑으로 활동합니다.",
+        "레오나르도 디카프리오가 주연을 맡았으며, 2010년에 개봉되었습니다.",
+        "이 영화는 '토템'이라는 물건을 통해 꿈과 현실을 구분합니다.",
+        "영화의 마지막 장면은 팽이가 도는 것으로 끝나며, 관객들 사이에 논쟁을 불러일으켰습니다."
     ]
-    movie = random.choice(sample_movies)
-    # 세션에 영어 제목도 저장
-    st.session_state.current_movie_en = movie["en"]
-    return movie["ko"]
+    st.session_state.current_hint_index = 0  # 현재 힌트 인덱스
+    st.session_state.correct = False  # 정답 여부
+    st.session_state.movie_title = "인셉션"  # 정답 영화 제목
 
-def get_next_hint(movie):
-    hints_template = {
-        "매트릭스": [
-            "1999년에 개봉한 이 영화는 SF 액션 영화의 역사를 새로 썼다고 평가받는 작품입니다.",
-            "주인공은 낮에는 평범한 회사원이지만, 비밀스러운 해커 생활을 하고 있습니다.",
-            "빨간색과 파란색 알약 중 하나를 선택하는 장면은 현대 영화사에서 가장 유명한 장면 중 하나가 되었습니다.",
-            "우리가 살고 있는 세상이 진짜가 아닐 수도 있다는 충격적인 철학적 질문을 던지는 작품입니다.",
-            "존 윅 시리즈로도 유명한 배우가 주연을 맡아 가장 대표적인 작품으로 꼽히는 영화입니다."
-        ]
-    }
-    
-    if movie in hints_template and st.session_state.hint_count < len(hints_template[movie]):
-        hint = hints_template[movie][st.session_state.hint_count]
-        st.session_state.hint_count += 1
-        return hint
+# 제목 표시
+st.title("🎬 영화 제목 맞추기 게임!")
+
+# 현재 힌트를 표시
+if st.session_state.current_hint_index < len(st.session_state.hints):
+    st.write(f"**힌트:** {st.session_state.hints[st.session_state.current_hint_index]}")
+else:
+    st.error("더 이상 힌트가 없습니다! 정답을 맞혀주세요!")
+
+# 사용자 입력창
+user_input = st.text_input("정답을 입력해보세요!", key="user_input")
+
+# [정답 확인] 버튼
+if st.button("정답 확인"):
+    # 사용자가 입력한 답과 정답 비교
+    if user_input.strip().lower() == st.session_state.movie_title.lower():
+        st.session_state.correct = True
+        st.success("정답입니다! 정말 뛰어나시군요. 🎉 혹시 다른 영화로 게임을 계속할까요?")
     else:
-        # 미리 정의되지 않은 영화의 경우 AI로 힌트 생성하고 번역
-        return get_ai_response(f"Give me hint #{st.session_state.hint_count + 1} for the movie '{st.session_state.current_movie_en}'")
-
-def main():
-    st.title("🎬 영화 제목 맞추기 퀴즈")
-    
-    # OpenAI API 키 설정
-    api_key = setup_openai_api_key()
-    openai.api_key = api_key
-    
-    initialize_session_state()
-    
-    # 새 게임 시작
-    if st.session_state.current_movie is None:
-        st.session_state.current_movie = generate_new_movie()
-        st.session_state.hint_count = 0
-        st.session_state.hints = []
-        st.session_state.give_up_count = 0
-    
-    # 현재 힌트 표시
-    if len(st.session_state.hints) < 5:
-        if len(st.session_state.hints) <= st.session_state.hint_count:
-            new_hint = get_next_hint(st.session_state.current_movie)
-            st.session_state.hints.append(new_hint)
-    
-    # 힌트들 표시
-    for i, hint in enumerate(st.session_state.hints, 1):
-        st.info(f"💡 힌트 {i}: {hint}")
-    
-    # 사용자 입력
-    with st.form(key="answer_form"):
-        user_answer = st.text_input("영화 제목을 맞춰보세요:")
-        submit_button = st.form_submit_button("정답 확인")
-        
-        if submit_button and user_answer:
-            if user_answer.lower() == st.session_state.current_movie.lower():
-                st.success("🎉 정답입니다! 정말 뛰어나시군요.")
-                if st.button("새 게임 시작"):
-                    st.session_state.current_movie = None
-                    st.experimental_rerun()
-            else:
-                st.error("😅 안타깝네요. 매우 근접하셨는데 아직 정답이 아닙니다.")
-                if len(st.session_state.hints) < 5:
-                    st.write("💪 포기하지 마세요! 다음 힌트를 확인하고 다시 도전해보세요!")
-    
-    # 포기하기 옵션
-    if st.button("정답 공개"):
-        st.session_state.give_up_count += 1
-        if st.session_state.give_up_count >= 3:
-            st.warning(f"정답은 '{st.session_state.current_movie}' 입니다!")
-            if st.button("새 게임 시작하기"):
-                st.session_state.current_movie = None
-                st.experimental_rerun()
+        st.session_state.current_hint_index += 1  # 다음 힌트로 이동
+        if st.session_state.current_hint_index < len(st.session_state.hints):
+            st.warning("안타깝네요. 매우 근접하셨는데 아직 정답이 아닙니다! 다음 힌트를 들어보세요.")
         else:
-            fake_answers = ["쇼생크 탈출", "인터스텔라", "라라랜드", "아바타", "터미네이터"]
-            fake_answer = random.choice([fa for fa in fake_answers if fa != st.session_state.current_movie])
-            st.warning(f"흠... 혹시 '{fake_answer}' 아닐까요? 😉")
+            st.error(f"모든 힌트가 끝났습니다. 정답은 **'{st.session_state.movie_title}'**입니다! 다음에 다시 도전해보세요.")
 
-if __name__ == "__main__":
-    main()
+# 정답을 맞췄다면 새로운 게임을 시작할지 여부를 묻기
+if st.session_state.correct:
+    if st.button("새 게임 시작하기"):
+        # 게임 상태 초기화
+        st.session_state.current_hint_index = 0
+        st.session_state.correct = False
+        st.session_state.user_input = ""
+        st.experimental_rerun()
