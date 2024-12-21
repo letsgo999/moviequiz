@@ -3,9 +3,28 @@ import openai
 import random
 import time
 import os
+from pathlib import Path
 
-# OpenAI API 설정
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# OpenAI API 키 설정 함수
+def setup_openai_api_key():
+    # 1. 환경변수에서 확인
+    api_key = os.getenv("OPENAI_API_KEY")
+    
+    # 2. Streamlit secrets에서 확인
+    if not api_key:
+        try:
+            api_key = st.secrets["OPENAI_API_KEY"]
+        except:
+            api_key = None
+    
+    # 3. 사이드바에서 입력 받기
+    if not api_key:
+        api_key = st.sidebar.text_input("OpenAI API 키를 입력하세요:", type="password")
+        if not api_key:
+            st.error("OpenAI API 키가 필요합니다. API 키를 입력해주세요.")
+            st.stop()
+    
+    return api_key
 
 def initialize_session_state():
     if 'current_movie' not in st.session_state:
@@ -24,10 +43,11 @@ def get_ai_response(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": """당신은 세계 영화사에 해박한 영화 전문가입니다. 
+                {"role": "system", "content": """당신은 세계 영화사에 해박한 한국인 영화 전문가입니다. 
                 현재 영화 제목 맞추기 게임을 진행중이며, 다음 영화에 대한 힌트를 제공해야 합니다: {current_movie}
-                힌트는 구체적이되 정답을 직접적으로 노출하지 않도록 해주세요."""},
-                {"role": "user", "content": prompt}
+                힌트는 반드시 한국어로 제공하되, 구체적이고 재미있게 설명하면서도 정답을 직접적으로 노출하지 않도록 해주세요.
+                답변은 반드시 한국어로만 해주세요."""},
+                {"role": "user", "content": prompt + " (한국어로 답변해주세요.)"}
             ]
         )
         return response.choices[0].message.content
@@ -52,11 +72,25 @@ def generate_new_movie():
 def get_next_hint(movie):
     hints_template = {
         "매트릭스": [
-            "1999년에 개봉한 이 영화는 SF 액션의 새로운 지평을 열었습니다.",
-            "주인공은 프로그래머이자 해커입니다.",
-            "'빨간 알약'과 '파란 알약'이라는 상징적인 장면이 유명합니다.",
-            "영화의 주요 테마는 현실과 가상현실의 경계에 관한 것입니다.",
-            "키아누 리브스가 주연을 맡았습니다."
+            "1999년에 개봉한 이 영화는 SF 액션 영화의 역사를 새로 썼다고 평가받는 작품입니다.",
+            "주인공은 낮에는 평범한 회사원이지만, 비밀스러운 해커 생활을 하고 있습니다.",
+            "빨간색과 파란색 알약 중 하나를 선택하는 장면은 현대 영화사에서 가장 유명한 장면 중 하나가 되었습니다.",
+            "우리가 살고 있는 세상이 진짜가 아닐 수도 있다는 충격적인 철학적 질문을 던지는 작품입니다.",
+            "존 윅 시리즈로도 유명한 배우가 주연을 맡아 가장 대표적인 작품으로 꼽히는 영화입니다."
+        ],
+        "인셉션": [
+            "2010년 개봉한 이 영화는 꿈과 현실의 경계를 넘나드는 독특한 설정으로 화제를 모았습니다.",
+            "주인공은 다른 사람의 꿈에 침투해 정보를 훔치는 특별한 기술을 가진 전문가입니다.",
+            "영화의 마지막 장면에 등장하는 물체는 지금도 팬들 사이에서 뜨거운 토론 주제입니다.",
+            "꿈속의 꿈속의 꿈... 더 깊이 들어갈수록 시간은 더욱 늘어납니다.",
+            "타이타닉으로 유명한 배우가 주연을 맡았습니다."
+        ],
+        "기생충": [
+            "2019년 아카데미 시상식에서 대한민국 영화 최초로 작품상을 수상한 영화입니다.",
+            "반지하 가족의 이야기로 시작하여 계단과 높이의 상징성이 돋보이는 작품입니다.",
+            "짜파구리가 외신에서도 화제가 되었던 이 영화는 빈부격차를 날카롭게 그려냅니다.",
+            "동시대 대한민국의 사회적 계급을 예리하게 파헤친 블랙 코미디입니다.",
+            "봉준호 감독의 작품으로, 송강호 배우가 아버지 역을 맡았습니다."
         ]
     }
     
@@ -71,10 +105,9 @@ def get_next_hint(movie):
 def main():
     st.title("🎬 영화 제목 맞추기 퀴즈")
     
-    # API 키 확인
-    if "OPENAI_API_KEY" not in st.secrets:
-        st.error("OpenAI API 키가 설정되지 않았습니다. Streamlit 클라우드에서 환경변수를 설정해주세요.")
-        st.stop()
+    # OpenAI API 키 설정
+    api_key = setup_openai_api_key()
+    openai.api_key = api_key
     
     initialize_session_state()
     
