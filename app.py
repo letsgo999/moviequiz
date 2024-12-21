@@ -27,6 +27,7 @@ if st.session_state.correct:
     st.success("정답입니다! 정말 뛰어나시군요. 🎉")
 else:
     if st.session_state.current_hint_index < len(st.session_state.hints):
+        # 현재 힌트를 표시
         st.write(f"**힌트:** {st.session_state.hints[st.session_state.current_hint_index]}")
     else:
         st.error("더 이상 힌트가 없습니다! 정답을 맞춰주세요.")
@@ -39,8 +40,10 @@ if st.button("정답 확인"):
     # 사용자가 입력한 답과 정답 비교
     if user_input.strip().lower() == st.session_state.movie_title.lower():
         st.session_state.correct = True
+        st.success("정답입니다! 정말 뛰어나시군요. 🎉")
     else:
-        st.session_state.current_hint_index += 1  # 다음 힌트로 이동
+        # 힌트 인덱스를 증가시키고 다음 힌트를 표시
+        st.session_state.current_hint_index += 1
         if st.session_state.current_hint_index < len(st.session_state.hints):
             st.warning("안타깝네요. 매우 근접하셨는데 아직 정답이 아닙니다! 다음 힌트를 들어보세요.")
         else:
